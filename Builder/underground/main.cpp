@@ -1,9 +1,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
-
-int count_of_carriages = 0;
-int count_of_trains = 0;
+#include <typeinfo>
 
 class Window {
  public:
@@ -50,10 +48,9 @@ class Carriage {
  public:
   Carriage() {
     id = count_of_carriages++;
-    is_head = 0;
   }
-  void print_information() {
-    std::cout << "Carriage #" << id << (is_head ? "(head)" : "")
+  virtual void print_information() {
+    std::cout <<"Carriage #" << id 
               << ":\nwindows: " << windows.size() << "\nseats: " << seats.size()
               << "\nwheels: " << wheels.size() << "\nroofs: " << roofs.size()
               << '\n';
@@ -62,17 +59,38 @@ class Carriage {
   void add_seat(Seat* seat_) { seats.push_back(seat_); }
   void add_wheel(Wheel* wheel_) { wheels.push_back(wheel_); }
   void add_roof(Roof* roof_) { roofs.push_back(roof_); }
-  void make_head() { is_head = 1; }
 
- private:
+  friend class Head_Carriage;
+
+ protected:
   std::vector<Window*> windows;
   std::vector<Seat*> seats;
   std::vector<Wheel*> wheels;
   std::vector<Roof*>
       roofs;  // допускаем, что можно построить несколько крыш вагону
   int id;
-  bool is_head;
+  static int count_of_carriages;
 };
+
+class Head_Carriage : public Carriage {
+ public:
+ void print_information() override {
+    std::cout << "Head Carriage #" << id 
+              << ":\nwindows: " << windows.size() << "\nseats: " << seats.size()
+              << "\nwheels: " << wheels.size() << "\nroofs: " << roofs.size()
+              << '\n';
+  }
+  Head_Carriage(Carriage* other) {
+    this->windows = other->windows;
+    this->seats = other->seats;
+    this->wheels = other->wheels;
+    this->roofs = other->roofs;
+    this->id = other->id;
+    delete other;
+  }
+};
+
+int Carriage::count_of_carriages = 0;
 
 class Builder {
  public:
@@ -80,7 +98,7 @@ class Builder {
   virtual void add_seats() const = 0;
   virtual void add_wheels() const = 0;
   virtual void add_roof() const = 0;
-  virtual void make_head() const = 0;
+  virtual void make_head() = 0;
   virtual Carriage* get_product() = 0;
 };
 
@@ -103,7 +121,10 @@ class BuilderOfClassicalCarriage : public Builder {
     }
   }
   void add_roof() const override { product->add_roof(new Roof); }
-  void make_head() const override { product->make_head(); }
+  void make_head() override {
+    Carriage* tmp = new Head_Carriage(product);
+    product = tmp;
+  }
   Carriage* get_product() override {
     Carriage* result = product;
     Reset();
@@ -134,7 +155,10 @@ class BuilderOfModernCarriage : public Builder {
     }
   }
   void add_roof() const override { product->add_roof(new Roof("aluminium")); }
-  void make_head() const override { product->make_head(); }
+  void make_head() override {
+    Carriage* tmp = new Head_Carriage(product);
+    product = tmp;
+  }
   Carriage* get_product() override {
     Carriage* result = product;
     Reset();
@@ -200,7 +224,10 @@ class Train {
   std::vector<Carriage*> carriages;
   std::pair<int, int> coordinates_of_head;
   int id;
+  static int count_of_trains;
 };
+
+int Train::count_of_trains = 0;
 
 class TrainFleet {
  public:
